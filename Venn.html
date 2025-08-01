@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surface Function to Center Venn Diagram</title>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/venn.js@0.2.20/venn.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    table {
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+    }
+    .button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    #venn {
+      width: 1400px;
+      height: 1000px;
+      position: relative;
+    }
+    .label {
+      font-size: 12px;
+      font-weight: bold;
+      pointer-events: none;
+    }
+    svg {
+      z-index: 1;
+    }
+    text {
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <h2>Surface Function to Center Venn Diagram + GAP</h2>
+  <p>Enter Centers and Surface Functions (comma-separated if multiple):</p>
+  <table id="inputTable">
+    <thead>
+      <tr><th>Categories</th><th>Attributes</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button class="button" onclick="addRow()">+ Add Row</button>
+  <button class="button" onclick="generateVenn()">Generate Diagram</button>
+
+  <div id="venn"></div>
+
+  <script>
+    const tableBody = document.querySelector("#inputTable tbody");
+    function addRow() {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td><input type="text"></td><td><input type="text"></td>`;
+      tableBody.appendChild(row);
+    }
+    for (let i = 0; i < 15; i++) addRow();
+
+    function generateVenn() {
+      const colorMap = {}; // Store fill colors to derive text color later
+      const rows = tableBody.querySelectorAll("tr");
+      const categoryMap = {};
+      let gapCount = 0;
+
+      rows.forEach(row => {
+        const sf = row.children[0].querySelector("input").value.trim();
+        const centers = row.children[1].querySelector("input").value.trim().split(/,\s*/).filter(Boolean);
+
+        if (!sf) return;
+        if (centers.length === 0) {
+          gapCount++;
+        } else {
+          centers.forEach(center => {
+            if (!categoryMap[sf]) categoryMap[sf] = new Set();
+            categoryMap[sf].add(center);
+          });
+        }
+      });
+
+      const categoryKeys = Object.keys(categoryMap);
+      const sets = categoryKeys.map(category => ({ sets: [category], size: categoryMap[category].size }));
+
+      for (let i = 0; i < categoryKeys.length; i++) {
+        for (let j = i + 1; j < categoryKeys.length; j++) {
+          const a = categoryMap[categoryKeys[i]];
+          const b = categoryMap[categoryKeys[j]];
+          const overlap = [...a].filter(x => b.has(x)).length;
+          if (overlap > 0) {
+            sets.push({ sets: [categoryKeys[i], categoryKeys[j]], size: overlap });
+          }
+        }
+      }
+
+      if (gapCount > 0) {
+        sets.push({ sets: ["GAP"], size: gapCount });
+      }
+
+      const chart = venn.VennDiagram().width(1400).height(1000);
+      d3.select("#venn").datum(sets).call(chart);
+
+      // Store the fill color of each circle by center name
+      d3.selectAll(".venn-area")
+        .each(function(d, i) {
+          const path = d3.select(this).select("path");
+          const fill = path.style("fill");
+          if (d.sets.length === 1) {
+            colorMap[d.sets[0]] = fill;
+          }
+        });
+
+      // Make text appear above the circles
+      d3.selectAll("#venn text.label")
+        .style("font-weight", "bold")
+        .style("font-size", "12px")
+        .each(function(d) {
+          if (d.sets.length === 1 && colorMap[d.sets[0]]) {
+            const baseColor = d3.color(colorMap[d.sets[0]]);
+            const darker = baseColor ? baseColor.darker(2).toString() : "black";
+            d3.select(this).style("fill", darker);
+          }
+        })
+        .raise();
+
+      // Add outlines to all circles
+      d3.selectAll(".venn-area path")
+        .style("stroke", "#333")
+        .style("stroke-width", 1.5);
+
+      // Special styling for GAP
+      d3.selectAll(".venn-area")
+        .filter(d => d.sets.includes("GAP"))
+        .style("fill", "#f77")
+        .style("stroke", "#c00")
+        .style("stroke-width", 2);
+
+      // Handle identical overlaps (fully shared sets)
+      const fullOverlapMap = {};
+      sets.forEach(entry => {
+        if (entry.sets.length > 1) {
+          const key = entry.sets.sort().join("+");
+          if (!fullOverlapMap[key]) fullOverlapMap[key] = [];
+          fullOverlapMap[key].push(entry);
+        }
+      });
+
+      // Flatten same-line labels for totally overlapping sets
+      // Removed labeling of overlapping sets
+    }
+  </script>
+</body>
+</html>
