@@ -121,7 +121,7 @@ function generateVenn() {
         colorMap[d.sets[0]] = fill;
         const bbox = path.node().getBBox();
         categoryCenters[d.sets[0]] = {
-          x: bbox.x + bbox.width / 2 + 200, // account for shift
+          x: bbox.x + bbox.width / 2,
           y: bbox.y + bbox.height / 2
         };
       }
@@ -132,7 +132,7 @@ function generateVenn() {
   svg.selectAll(".title-box").remove();
 
   titlePositions = {};
-  let startX = 0; // now in SVG space
+  let startX = 0; // left label start position in SVG space
   let startY = 30;
 
   categoryKeys.forEach((cat) => {
@@ -160,35 +160,41 @@ function generateVenn() {
     startY += 22;
   });
 
-  toggleLines(true); // draw if already on
+  // Refresh lines if toggle was on
+  if (showLines) {
+    drawLines();
+  }
 }
 
-function toggleLines(forceOff = false) {
+function toggleLines() {
+  showLines = !showLines;
+  const svg = d3.select("#venn svg");
+  svg.selectAll(".title-line").remove();
+  if (showLines) {
+    drawLines();
+  }
+}
+
+function drawLines() {
   const svg = d3.select("#venn svg");
   svg.selectAll(".title-line").remove();
 
-  if (forceOff === true) {
-    if (!showLines) return;
-  }
-
-  showLines = !showLines;
-
-  if (showLines) {
-    Object.keys(titlePositions).forEach(cat => {
-      if (categoryCenters[cat]) {
-        svg.append("line")
-          .attr("class", "title-line")
-          .attr("x1", titlePositions[cat].x)
-          .attr("y1", titlePositions[cat].y)
-          .attr("x2", categoryCenters[cat].x)
-          .attr("y2", categoryCenters[cat].y)
-          .attr("stroke", "#444")
-          .attr("stroke-width", 1);
-      }
-    });
-  }
+  Object.keys(titlePositions).forEach(cat => {
+    if (categoryCenters[cat]) {
+      svg.append("line")
+        .attr("class", "title-line")
+        .attr("x1", titlePositions[cat].x)
+        .attr("y1", titlePositions[cat].y)
+        .attr("x2", categoryCenters[cat].x + 200) // add shift so matches diagram
+        .attr("y2", categoryCenters[cat].y)
+        .attr("stroke", "#444")
+        .attr("stroke-width", 1);
+    }
+  });
 }
 </script>
 </body>
 </html>
+
+
 
