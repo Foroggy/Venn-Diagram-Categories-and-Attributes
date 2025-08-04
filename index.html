@@ -104,7 +104,10 @@
       }
 
       const chart = venn.VennDiagram().width(1200).height(1000);
-      d3.select("#venn").datum(sets).call(chart);
+      const svg = d3.select("#venn").datum(sets).call(chart).select("svg");
+
+      // Expand viewBox so we can draw labels to the left
+      svg.attr("viewBox", "-250 0 1500 1000");
 
       // Store fill colors
       d3.selectAll(".venn-area")
@@ -155,14 +158,13 @@
         });
 
       // Add titles in SVG on the left with boxes
-      const svg = d3.select("#venn svg");
       svg.selectAll(".side-title").remove();
       svg.selectAll(".title-box").remove();
       titlePositions = {};
-      const startX = -180; // left of diagram
+      const startX = -230; // left of diagram (visible now due to viewBox)
       let startY = 30;
 
-      categoryKeys.forEach((cat, idx) => {
+      categoryKeys.forEach((cat) => {
         // Draw box
         svg.append("rect")
           .attr("class", "title-box")
@@ -213,6 +215,5 @@
   </script>
 </body>
 </html>
-
 
 
