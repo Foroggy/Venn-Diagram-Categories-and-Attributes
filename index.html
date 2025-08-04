@@ -65,7 +65,7 @@
     for (let i = 0; i < 15; i++) addRow();
 
     function generateVenn() {
-      const colorMap = {}; // Store fill colors to derive text color later
+      const colorMap = {};
       const rows = tableBody.querySelectorAll("tr");
       const categoryMap = {};
       let gapCount = 0;
@@ -106,7 +106,6 @@
       const chart = venn.VennDiagram().width(1400).height(1000);
       d3.select("#venn").datum(sets).call(chart);
 
-      // Store the fill color of each circle by center name
       d3.selectAll(".venn-area")
         .each(function(d, i) {
           const path = d3.select(this).select("path");
@@ -116,7 +115,6 @@
           }
         });
 
-      // Make text appear above the circles
       d3.selectAll("#venn text.label")
         .style("font-weight", "bold")
         .style("font-size", "12px")
@@ -129,30 +127,55 @@
         })
         .raise();
 
-      // Add outlines to all circles
       d3.selectAll(".venn-area path")
         .style("stroke", "#333")
         .style("stroke-width", 1.5);
 
-      // Special styling for GAP
       d3.selectAll(".venn-area")
         .filter(d => d.sets.includes("GAP"))
         .style("fill", "#f77")
         .style("stroke", "#c00")
         .style("stroke-width", 2);
 
-      // Handle identical overlaps (fully shared sets)
-      const fullOverlapMap = {};
-      sets.forEach(entry => {
-        if (entry.sets.length > 1) {
-          const key = entry.sets.sort().join("+");
-          if (!fullOverlapMap[key]) fullOverlapMap[key] = [];
-          fullOverlapMap[key].push(entry);
-        }
-      });
+      // ---- NEW: Move labels outside circles and draw lines ----
+      const svg = d3.select("#venn svg");
+      svg.selectAll(".outer-label").remove();
 
-      // Flatten same-line labels for totally overlapping sets
-      // Removed labeling of overlapping sets
+      d3.selectAll(".venn-area")
+        .filter(d => d.sets.length === 1)
+        .each(function(d, i) {
+          const circle = d3.select(this).select("path").node();
+          if (!circle) return;
+
+          const bbox = circle.getBBox();
+          const cx = bbox.x + bbox.width / 2;
+          const cy = bbox.y + bbox.height / 2;
+
+          const labelOffset = bbox.width / 2 + 40;
+          const angle = (2 * Math.PI * i) / categoryKeys.length;
+          const labelX = cx + labelOffset * Math.cos(angle);
+          const labelY = cy + labelOffset * Math.sin(angle);
+
+          svg.append("line")
+            .attr("class", "outer-label")
+            .attr("x1", cx)
+            .attr("y1", cy)
+            .attr("x2", labelX)
+            .attr("y2", labelY)
+            .attr("stroke", "#444")
+            .attr("stroke-width", 1);
+
+          svg.append("text")
+            .attr("class", "outer-label")
+            .attr("x", labelX)
+            .attr("y", labelY)
+            .attr("text-anchor", labelX < cx ? "end" : "start")
+            .attr("alignment-baseline", "middle")
+            .style("font-weight", "bold")
+            .style("font-size", "14px")
+            .style("fill", "#111")
+            .text(d.sets[0]);
+        });
     }
   </script>
 </body>
