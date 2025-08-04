@@ -24,21 +24,8 @@
       font-size: 16px;
       margin-right: 10px;
     }
-    #container {
-      display: flex;
-      align-items: flex-start;
-    }
-    #titleList {
-      margin-right: 20px;
-      min-width: 200px;
-    }
-    #titleList div {
-      font-weight: bold;
-      margin-bottom: 8px;
-      cursor: pointer;
-    }
     #venn {
-      width: 1200px;
+      width: 1400px;
       height: 1000px;
       position: relative;
     }
@@ -62,14 +49,12 @@
   <button class="button" onclick="generateVenn()">Generate Diagram</button>
   <button class="button" onclick="toggleLines()">Toggle Lines</button>
 
-  <div id="container">
-    <div id="titleList"></div>
-    <div id="venn"></div>
-  </div>
+  <div id="venn"></div>
 
   <script>
     const tableBody = document.querySelector("#inputTable tbody");
     let categoryCenters = {};
+    let titlePositions = {};
     let showLines = false;
 
     function addRow() {
@@ -155,7 +140,7 @@
         .style("stroke", "#c00")
         .style("stroke-width", 2);
 
-      // Store center positions for each category
+      // Store circle centers
       categoryCenters = {};
       d3.selectAll(".venn-area")
         .filter(d => d.sets.length === 1)
@@ -169,35 +154,42 @@
           };
         });
 
-      // Generate list of category titles on the left
-      const listDiv = document.getElementById("titleList");
-      listDiv.innerHTML = "";
-      categoryKeys.forEach(cat => {
-        const div = document.createElement("div");
-        div.textContent = cat;
-        div.style.color = colorMap[cat] || "#000";
-        listDiv.appendChild(div);
+      // Add titles in SVG on the left
+      const svg = d3.select("#venn svg");
+      svg.selectAll(".side-title").remove();
+      titlePositions = {};
+      const startX = -150; // left of diagram
+      let startY = 30;
+
+      categoryKeys.forEach((cat, idx) => {
+        svg.append("text")
+          .attr("class", "side-title")
+          .attr("x", startX)
+          .attr("y", startY)
+          .style("font-weight", "bold")
+          .style("font-size", "14px")
+          .style("fill", colorMap[cat] || "#000")
+          .text(cat);
+
+        titlePositions[cat] = { x: startX, y: startY };
+        startY += 20;
       });
+
+      toggleLines(); // refresh lines based on current toggle state
     }
 
     function toggleLines() {
-      showLines = !showLines;
       const svg = d3.select("#venn svg");
       svg.selectAll(".title-line").remove();
+      showLines = !showLines;
 
       if (showLines) {
-        const listItems = document.querySelectorAll("#titleList div");
-        listItems.forEach((div, idx) => {
-          const cat = div.textContent;
+        Object.keys(titlePositions).forEach(cat => {
           if (categoryCenters[cat]) {
-            const labelX = -200; // left of diagram
-            const labelY = idx * 20 + 20; // space out
-
-            // Add line from label to circle center
             svg.append("line")
               .attr("class", "title-line")
-              .attr("x1", labelX + 200) // right edge of label area
-              .attr("y1", labelY)
+              .attr("x1", titlePositions[cat].x + 50) // from title
+              .attr("y1", titlePositions[cat].y - 5)
               .attr("x2", categoryCenters[cat].x)
               .attr("y2", categoryCenters[cat].y)
               .attr("stroke", "#444")
@@ -209,5 +201,6 @@
   </script>
 </body>
 </html>
+
 
 
