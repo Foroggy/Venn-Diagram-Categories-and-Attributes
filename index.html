@@ -1,200 +1,208 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multi Venn Diagram</title>
-<script src="https://d3js.org/d3.v4.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/venn.js@0.2.20/venn.min.js"></script>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 40px;
-  }
-  table {
-    border-collapse: collapse;
-    margin-bottom: 20px;
-  }
-  th, td {
-    padding: 6px 10px;
-    border: 1px solid #ccc;
-  }
-  .button {
-    padding: 10px 20px;
-    font-size: 16px;
-    margin-right: 10px;
-  }
-  #venn {
-    width: 1400px;
-    height: 1000px;
-    position: relative;
-  }
-  .label {
-    font-size: 12px;
-    font-weight: bold;
-    pointer-events: none;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi Venn Diagram</title>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/venn.js@0.2.20/venn.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    table {
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+    }
+    .button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    #venn {
+      width: 1400px;
+      height: 1000px;
+      position: relative;
+    }
+    .label {
+      font-size: 12px;
+      font-weight: bold;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-<h2>Multi Venn Diagram</h2>
-<p>Enter Categories (single titles) and Attributes (comma-separated if multiple):</p>
-<table id="inputTable">
-  <thead>
-    <tr><th>Categories</th><th>Attributes</th></tr>
-  </thead>
-  <tbody></tbody>
-</table>
-<button class="button" onclick="addRow()">+ Add Row</button>
-<button class="button" onclick="generateVenn()">Generate Diagram</button>
-<button class="button" onclick="toggleLines()">Toggle Lines</button>
+  <h2>Multi Venn Diagram</h2>
+  <p>Enter Categories (single titles) and Attributes (comma-separated if multiple):</p>
+  <table id="inputTable">
+    <thead>
+      <tr><th>Categories</th><th>Attributes</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button class="button" onclick="addRow()">+ Add Row</button>
+  <button class="button" onclick="generateVenn()">Generate Diagram</button>
+  <button class="button" onclick="toggleLines()">Toggle Lines</button>
 
-<div id="venn"></div>
+  <div id="venn"></div>
 
-<script>
-const tableBody = document.querySelector("#inputTable tbody");
-let categoryCenters = {};
-let titlePositions = {};
-let showLines = false;
+  <script>
+    const tableBody = document.querySelector("#inputTable tbody");
+    let categoryCenters = {};
+    let titlePositions = {};
+    let showLines = false;
 
-function addRow() {
-  const row = document.createElement("tr");
-  row.innerHTML = `<td><input type="text"></td><td><input type="text"></td>`;
-  tableBody.appendChild(row);
-}
-for (let i = 0; i < 15; i++) addRow();
+    function addRow() {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td><input type="text"></td><td><input type="text"></td>`;
+      tableBody.appendChild(row);
+    }
+    for (let i = 0; i < 15; i++) addRow();
 
-function generateVenn() {
-  const colorMap = {};
-  const rows = tableBody.querySelectorAll("tr");
-  const categoryMap = {};
-  let gapCount = 0;
+    function generateVenn() {
+      const colorMap = {};
+      const rows = tableBody.querySelectorAll("tr");
+      const categoryMap = {};
+      let gapCount = 0;
 
-  rows.forEach(row => {
-    const sf = row.children[0].querySelector("input").value.trim();
-    const centers = row.children[1].querySelector("input").value.trim().split(/,\s*/).filter(Boolean);
+      rows.forEach(row => {
+        const sf = row.children[0].querySelector("input").value.trim();
+        const centers = row.children[1].querySelector("input").value.trim().split(/,\s*/).filter(Boolean);
 
-    if (!sf) return;
-    if (centers.length === 0) {
-      gapCount++;
-    } else {
-      centers.forEach(center => {
-        if (!categoryMap[sf]) categoryMap[sf] = new Set();
-        categoryMap[sf].add(center);
+        if (!sf) return;
+        if (centers.length === 0) {
+          gapCount++;
+        } else {
+          centers.forEach(center => {
+            if (!categoryMap[sf]) categoryMap[sf] = new Set();
+            categoryMap[sf].add(center);
+          });
+        }
       });
+
+      const categoryKeys = Object.keys(categoryMap);
+      const sets = categoryKeys.map(category => ({ sets: [category], size: categoryMap[category].size }));
+
+      for (let i = 0; i < categoryKeys.length; i++) {
+        for (let j = i + 1; j < categoryKeys.length; j++) {
+          const a = categoryMap[categoryKeys[i]];
+          const b = categoryMap[categoryKeys[j]];
+          const overlap = [...a].filter(x => b.has(x)).length;
+          if (overlap > 0) {
+            sets.push({ sets: [categoryKeys[i], categoryKeys[j]], size: overlap });
+          }
+        }
+      }
+
+      if (gapCount > 0) {
+        sets.push({ sets: ["GAP"], size: gapCount });
+      }
+
+      const chart = venn.VennDiagram().width(1200).height(1000);
+      d3.select("#venn").datum(sets).call(chart);
+
+      // Store fill colors
+      d3.selectAll(".venn-area")
+        .each(function(d) {
+          const path = d3.select(this).select("path");
+          const fill = path.style("fill");
+          if (d.sets.length === 1) {
+            colorMap[d.sets[0]] = fill;
+          }
+        });
+
+      // Style text
+      d3.selectAll("#venn text.label")
+        .style("font-weight", "bold")
+        .style("font-size", "12px")
+        .each(function(d) {
+          if (d.sets.length === 1 && colorMap[d.sets[0]]) {
+            const baseColor = d3.color(colorMap[d.sets[0]]);
+            const darker = baseColor ? baseColor.darker(2).toString() : "black";
+            d3.select(this).style("fill", darker);
+          }
+        })
+        .raise();
+
+      d3.selectAll(".venn-area path")
+        .style("stroke", "#333")
+        .style("stroke-width", 1.5);
+
+      // Special styling for GAP
+      d3.selectAll(".venn-area")
+        .filter(d => d.sets.includes("GAP"))
+        .style("fill", "#f77")
+        .style("stroke", "#c00")
+        .style("stroke-width", 2);
+
+      // Store circle centers
+      categoryCenters = {};
+      d3.selectAll(".venn-area")
+        .filter(d => d.sets.length === 1)
+        .each(function(d) {
+          const circle = d3.select(this).select("path").node();
+          if (!circle) return;
+          const bbox = circle.getBBox();
+          categoryCenters[d.sets[0]] = {
+            x: bbox.x + bbox.width / 2,
+            y: bbox.y + bbox.height / 2
+          };
+        });
+
+      // Add titles in SVG on the left
+      const svg = d3.select("#venn svg");
+      svg.selectAll(".side-title").remove();
+      titlePositions = {};
+      const startX = -150; // left of diagram
+      let startY = 30;
+
+      categoryKeys.forEach((cat, idx) => {
+        svg.append("text")
+          .attr("class", "side-title")
+          .attr("x", startX)
+          .attr("y", startY)
+          .style("font-weight", "bold")
+          .style("font-size", "14px")
+          .style("fill", colorMap[cat] || "#000")
+          .text(cat);
+
+        titlePositions[cat] = { x: startX, y: startY };
+        startY += 20;
+      });
+
+      toggleLines(); // refresh lines based on current toggle state
     }
-  });
 
-  const categoryKeys = Object.keys(categoryMap);
-  const sets = categoryKeys.map(category => ({ sets: [category], size: categoryMap[category].size }));
+    function toggleLines() {
+      const svg = d3.select("#venn svg");
+      svg.selectAll(".title-line").remove();
+      showLines = !showLines;
 
-  for (let i = 0; i < categoryKeys.length; i++) {
-    for (let j = i + 1; j < categoryKeys.length; j++) {
-      const a = categoryMap[categoryKeys[i]];
-      const b = categoryMap[categoryKeys[j]];
-      const overlap = [...a].filter(x => b.has(x)).length;
-      if (overlap > 0) {
-        sets.push({ sets: [categoryKeys[i], categoryKeys[j]], size: overlap });
+      if (showLines) {
+        Object.keys(titlePositions).forEach(cat => {
+          if (categoryCenters[cat]) {
+            svg.append("line")
+              .attr("class", "title-line")
+              .attr("x1", titlePositions[cat].x + 50) // from title
+              .attr("y1", titlePositions[cat].y - 5)
+              .attr("x2", categoryCenters[cat].x)
+              .attr("y2", categoryCenters[cat].y)
+              .attr("stroke", "#444")
+              .attr("stroke-width", 1);
+          }
+        });
       }
     }
-  }
-
-  if (gapCount > 0) {
-    sets.push({ sets: ["GAP"], size: gapCount });
-  }
-
-  const chart = venn.VennDiagram().width(1100).height(1000);
-  d3.select("#venn").datum(sets).call(chart);
-
-  const svg = d3.select("#venn svg");
-
-  // Shift diagram right to make room for labels
-  svg.select("g").attr("transform", "translate(200,0)");
-
-  // Store fill colors and centers
-  categoryCenters = {};
-  d3.selectAll(".venn-area")
-    .each(function(d) {
-      const path = d3.select(this).select("path");
-      const fill = path.style("fill");
-      if (d.sets.length === 1) {
-        colorMap[d.sets[0]] = fill;
-        const bbox = path.node().getBBox();
-        categoryCenters[d.sets[0]] = {
-          x: bbox.x + bbox.width / 2,
-          y: bbox.y + bbox.height / 2
-        };
-      }
-    });
-
-  // Remove old titles/boxes
-  svg.selectAll(".side-title").remove();
-  svg.selectAll(".title-box").remove();
-
-  titlePositions = {};
-  let startX = 0; // left label start position in SVG space
-  let startY = 30;
-
-  categoryKeys.forEach((cat) => {
-    // Draw box
-    svg.append("rect")
-      .attr("class", "title-box")
-      .attr("x", startX - 5)
-      .attr("y", startY - 14)
-      .attr("width", 140)
-      .attr("height", 18)
-      .attr("fill", "none")
-      .attr("stroke", "#999");
-
-    // Draw text
-    svg.append("text")
-      .attr("class", "side-title")
-      .attr("x", startX)
-      .attr("y", startY)
-      .style("font-weight", "bold")
-      .style("font-size", "14px")
-      .style("fill", colorMap[cat] || "#000")
-      .text(cat);
-
-    titlePositions[cat] = { x: startX + 135, y: startY - 5 };
-    startY += 22;
-  });
-
-  // Refresh lines if toggle was on
-  if (showLines) {
-    drawLines();
-  }
-}
-
-function toggleLines() {
-  showLines = !showLines;
-  const svg = d3.select("#venn svg");
-  svg.selectAll(".title-line").remove();
-  if (showLines) {
-    drawLines();
-  }
-}
-
-function drawLines() {
-  const svg = d3.select("#venn svg");
-  svg.selectAll(".title-line").remove();
-
-  Object.keys(titlePositions).forEach(cat => {
-    if (categoryCenters[cat]) {
-      svg.append("line")
-        .attr("class", "title-line")
-        .attr("x1", titlePositions[cat].x)
-        .attr("y1", titlePositions[cat].y)
-        .attr("x2", categoryCenters[cat].x + 200) // add shift so matches diagram
-        .attr("y2", categoryCenters[cat].y)
-        .attr("stroke", "#444")
-        .attr("stroke-width", 1);
-    }
-  });
-}
-</script>
+  </script>
 </body>
 </html>
+
+
 
 
 
