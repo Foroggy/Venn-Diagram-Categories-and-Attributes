@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,6 +106,12 @@
       const chart = venn.VennDiagram().width(1200).height(1000);
       d3.select("#venn").datum(sets).call(chart);
 
+      const svg = d3.select("#venn svg");
+      // Expand viewBox for left-side titles
+      svg.attr("viewBox", "-200 0 1400 1000");
+      // Move diagram right to make space
+      svg.select("g").attr("transform", "translate(200,0)");
+
       // Store fill colors
       d3.selectAll(".venn-area")
         .each(function(d) {
@@ -155,14 +160,13 @@
           };
         });
 
-      // Add titles in SVG on the left
-      const svg = d3.select("#venn svg");
+      // Add titles on the left
       svg.selectAll(".side-title").remove();
       titlePositions = {};
-      const startX = -150; // left of diagram
+      const startX = -180; // now visible due to viewBox
       let startY = 30;
 
-      categoryKeys.forEach((cat, idx) => {
+      categoryKeys.forEach((cat) => {
         svg.append("text")
           .attr("class", "side-title")
           .attr("x", startX)
@@ -172,25 +176,28 @@
           .style("fill", colorMap[cat] || "#000")
           .text(cat);
 
-        titlePositions[cat] = { x: startX, y: startY };
+        titlePositions[cat] = { x: startX + 50, y: startY - 5 };
         startY += 20;
       });
 
-      toggleLines(); // refresh lines based on current toggle state
+      toggleLines(true);
     }
 
-    function toggleLines() {
+    function toggleLines(forceRefresh = false) {
       const svg = d3.select("#venn svg");
       svg.selectAll(".title-line").remove();
-      showLines = !showLines;
+
+      if (!forceRefresh) {
+        showLines = !showLines;
+      }
 
       if (showLines) {
         Object.keys(titlePositions).forEach(cat => {
           if (categoryCenters[cat]) {
             svg.append("line")
               .attr("class", "title-line")
-              .attr("x1", titlePositions[cat].x + 50) // from title
-              .attr("y1", titlePositions[cat].y - 5)
+              .attr("x1", titlePositions[cat].x)
+              .attr("y1", titlePositions[cat].y)
               .attr("x2", categoryCenters[cat].x)
               .attr("y2", categoryCenters[cat].y)
               .attr("stroke", "#444")
@@ -202,4 +209,5 @@
   </script>
 </body>
 </html>
+
 
