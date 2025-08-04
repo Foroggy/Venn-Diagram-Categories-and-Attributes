@@ -22,9 +22,23 @@
     .button {
       padding: 10px 20px;
       font-size: 16px;
+      margin-right: 10px;
+    }
+    #container {
+      display: flex;
+      align-items: flex-start;
+    }
+    #titleList {
+      margin-right: 20px;
+      min-width: 200px;
+    }
+    #titleList div {
+      font-weight: bold;
+      margin-bottom: 8px;
+      cursor: pointer;
     }
     #venn {
-      width: 1400px;
+      width: 1200px;
       height: 1000px;
       position: relative;
     }
@@ -32,12 +46,6 @@
       font-size: 12px;
       font-weight: bold;
       pointer-events: none;
-    }
-    svg {
-      z-index: 1;
-    }
-    text {
-      z-index: 2;
     }
   </style>
 </head>
@@ -52,11 +60,18 @@
   </table>
   <button class="button" onclick="addRow()">+ Add Row</button>
   <button class="button" onclick="generateVenn()">Generate Diagram</button>
+  <button class="button" onclick="toggleLines()">Toggle Lines</button>
 
-  <div id="venn"></div>
+  <div id="container">
+    <div id="titleList"></div>
+    <div id="venn"></div>
+  </div>
 
   <script>
     const tableBody = document.querySelector("#inputTable tbody");
+    let categoryCenters = {};
+    let showLines = false;
+
     function addRow() {
       const row = document.createElement("tr");
       row.innerHTML = `<td><input type="text"></td><td><input type="text"></td>`;
@@ -103,11 +118,12 @@
         sets.push({ sets: ["GAP"], size: gapCount });
       }
 
-      const chart = venn.VennDiagram().width(1400).height(1000);
+      const chart = venn.VennDiagram().width(1200).height(1000);
       d3.select("#venn").datum(sets).call(chart);
 
+      // Store fill colors
       d3.selectAll(".venn-area")
-        .each(function(d, i) {
+        .each(function(d) {
           const path = d3.select(this).select("path");
           const fill = path.style("fill");
           if (d.sets.length === 1) {
@@ -115,6 +131,7 @@
           }
         });
 
+      // Style text
       d3.selectAll("#venn text.label")
         .style("font-weight", "bold")
         .style("font-size", "12px")
@@ -131,52 +148,66 @@
         .style("stroke", "#333")
         .style("stroke-width", 1.5);
 
+      // Special styling for GAP
       d3.selectAll(".venn-area")
         .filter(d => d.sets.includes("GAP"))
         .style("fill", "#f77")
         .style("stroke", "#c00")
         .style("stroke-width", 2);
 
-      // ---- NEW: Move labels outside circles and draw lines ----
-      const svg = d3.select("#venn svg");
-      svg.selectAll(".outer-label").remove();
-
+      // Store center positions for each category
+      categoryCenters = {};
       d3.selectAll(".venn-area")
         .filter(d => d.sets.length === 1)
-        .each(function(d, i) {
+        .each(function(d) {
           const circle = d3.select(this).select("path").node();
           if (!circle) return;
-
           const bbox = circle.getBBox();
-          const cx = bbox.x + bbox.width / 2;
-          const cy = bbox.y + bbox.height / 2;
-
-          const labelOffset = bbox.width / 2 + 40;
-          const angle = (2 * Math.PI * i) / categoryKeys.length;
-          const labelX = cx + labelOffset * Math.cos(angle);
-          const labelY = cy + labelOffset * Math.sin(angle);
-
-          svg.append("line")
-            .attr("class", "outer-label")
-            .attr("x1", cx)
-            .attr("y1", cy)
-            .attr("x2", labelX)
-            .attr("y2", labelY)
-            .attr("stroke", "#444")
-            .attr("stroke-width", 1);
-
-          svg.append("text")
-            .attr("class", "outer-label")
-            .attr("x", labelX)
-            .attr("y", labelY)
-            .attr("text-anchor", labelX < cx ? "end" : "start")
-            .attr("alignment-baseline", "middle")
-            .style("font-weight", "bold")
-            .style("font-size", "14px")
-            .style("fill", "#111")
-            .text(d.sets[0]);
+          categoryCenters[d.sets[0]] = {
+            x: bbox.x + bbox.width / 2,
+            y: bbox.y + bbox.height / 2
+          };
         });
+
+      // Generate list of category titles on the left
+      const listDiv = document.getElementById("titleList");
+      listDiv.innerHTML = "";
+      categoryKeys.forEach(cat => {
+        const div = document.createElement("div");
+        div.textContent = cat;
+        div.style.color = colorMap[cat] || "#000";
+        listDiv.appendChild(div);
+      });
+    }
+
+    function toggleLines() {
+      showLines = !showLines;
+      const svg = d3.select("#venn svg");
+      svg.selectAll(".title-line").remove();
+
+      if (showLines) {
+        const listItems = document.querySelectorAll("#titleList div");
+        listItems.forEach((div, idx) => {
+          const cat = div.textContent;
+          if (categoryCenters[cat]) {
+            const labelX = -200; // left of diagram
+            const labelY = idx * 20 + 20; // space out
+
+            // Add line from label to circle center
+            svg.append("line")
+              .attr("class", "title-line")
+              .attr("x1", labelX + 200) // right edge of label area
+              .attr("y1", labelY)
+              .attr("x2", categoryCenters[cat].x)
+              .attr("y2", categoryCenters[cat].y)
+              .attr("stroke", "#444")
+              .attr("stroke-width", 1);
+          }
+        });
+      }
     }
   </script>
 </body>
 </html>
+
+
